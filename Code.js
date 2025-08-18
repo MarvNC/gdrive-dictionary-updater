@@ -97,7 +97,7 @@ const REPOS_TO_UPDATE = [
     url: "https://api.github.com/repos/MarvNC/pixiv-yomitan/releases/latest",
     folderId: JAPANESE_FOLDER_ID,
     includedNameRegex: /^PixivLight_[\d\-]+\.zip$/,
-    removeNameRegex: /^PixivLight_[\d\-]+\.zip$/,
+    removeNameRegex: /PixivLight_[\d\-]+\.zip$/,
     fileNamePrefix: "[JA-JA Encyclopedia] ",
     addDate: false,
   },
@@ -137,6 +137,7 @@ const STARTER_DICTIONARIES_ORDER = [
  * @type {RegExp[]}
  */
 const UPDATING_DICTIONARIES_TO_COPY_JA_TO_STARTER_PACK = [
+  /\[JA-JA Names\] JMnedict.*/,
   /\[JA-EN\] jitendex-yomitan.*/,
   /\[JA-JA Encyclopedia\] PixivLight.*/,
   /\[Kanji\] KANJIDIC_english.*/,
@@ -331,6 +332,7 @@ function downloadFromGithub(githubRepo) {
 function removeFilesWithRegexBypassTrash(folderId, regexToRemove) {
   const folder = DriveApp.getFolderById(folderId);
   const files = folder.getFiles();
+  Logger.log(`Removing files matching ${regexToRemove} from folder ${folderId}`);
 
   while (files.hasNext()) {
     const file = files.next();

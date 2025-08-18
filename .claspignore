@@ -1,5 +1,2 @@
-.prettierrc
+node_modules/**
 bun.lockb
-package.json
-readme.md
-node_modules

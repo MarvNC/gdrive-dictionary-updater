@@ -1,91 +1,94 @@
 function updateStarterDictionariesPack(): void {
-  const JapaneseFolder = DriveApp.getFolderById(JAPANESE_FOLDER_ID);
-  const JapaneseStarterPack = DriveApp.getFolderById(JA_STARTER_PACK);
+  const japaneseSourceFolder = DriveApp.getFolderById(JAPANESE_FOLDER_ID);
+  const starterPackFolder = DriveApp.getFolderById(JA_STARTER_PACK);
 
-  const sourceFiles: GoogleAppsScript.Drive.File[] = [];
-  const sourceFilesIterator = JapaneseFolder.getFiles();
+  const sourceFilesList: GoogleAppsScript.Drive.File[] = [];
+  const sourceFilesIterator = japaneseSourceFolder.getFiles();
   while (sourceFilesIterator.hasNext())
-    sourceFiles.push(sourceFilesIterator.next());
+    sourceFilesList.push(sourceFilesIterator.next());
 
   const fetchStarterPackFiles = () => {
-    const arr: GoogleAppsScript.Drive.File[] = [];
-    const it = JapaneseStarterPack.getFiles();
-    while (it.hasNext()) arr.push(it.next());
-    return arr;
+    const files: GoogleAppsScript.Drive.File[] = [];
+    const starterPackIterator = starterPackFolder.getFiles();
+    while (starterPackIterator.hasNext())
+      files.push(starterPackIterator.next());
+    return files;
   };
 
-  let starterPackFiles = fetchStarterPackFiles();
+  let starterPackFilesList = fetchStarterPackFiles();
 
   for (const dictionaryRegex of STARTER_DICTIONARIES_ORDER) {
-    const matchingSourceFile = sourceFiles.find((file) =>
+    const matchingSourceFile = sourceFilesList.find((file) =>
       file.getName().match(dictionaryRegex)
     );
     if (!matchingSourceFile) continue;
 
     const sourceFileName = matchingSourceFile.getName();
-    const matchingStarterFiles = starterPackFiles.filter((starterFile) => {
-      const baseStarterName = starterFile.getName().replace(/^\d{2}\s/, "");
-      return baseStarterName.match(dictionaryRegex);
-    });
+    const matchingStarterPackFiles = starterPackFilesList.filter(
+      (starterFile) => {
+        const baseStarterName = starterFile.getName().replace(/^\d{2}\s/, "");
+        return baseStarterName.match(dictionaryRegex);
+      }
+    );
 
-    let shouldReplace = false;
-    if (matchingStarterFiles.length > 1) {
-      shouldReplace = true;
+    let shouldReplaceFile = false;
+    if (matchingStarterPackFiles.length > 1) {
+      shouldReplaceFile = true;
       Logger.log(
-        `Multiple (${matchingStarterFiles.length}) starter pack files match ${dictionaryRegex}; replacing with latest ${sourceFileName}`
+        `Multiple (${matchingStarterPackFiles.length}) starter pack files match ${dictionaryRegex}; replacing with latest ${sourceFileName}`
       );
-    } else if (matchingStarterFiles.length === 1) {
+    } else if (matchingStarterPackFiles.length === 1) {
       try {
-        const starterSize = matchingStarterFiles[0].getSize();
-        const sourceSize = matchingSourceFile.getSize();
-        if (starterSize !== sourceSize) {
-          shouldReplace = true;
+        const starterFileSize = matchingStarterPackFiles[0].getSize();
+        const sourceFileSize = matchingSourceFile.getSize();
+        if (starterFileSize !== sourceFileSize) {
+          shouldReplaceFile = true;
           Logger.log(
-            `Starter pack file ${matchingStarterFiles[0].getName()} differs in size (${starterSize} != ${sourceSize}); replacing.`
+            `Starter pack file ${matchingStarterPackFiles[0].getName()} differs in size (${starterFileSize} != ${sourceFileSize}); replacing.`
           );
         }
       } catch (e: any) {
-        shouldReplace = true;
+        shouldReplaceFile = true;
         Logger.log(
-          `Error reading file size for ${matchingStarterFiles[0].getName()}: ${
+          `Error reading file size for ${matchingStarterPackFiles[0].getName()}: ${
             e.message
           }; replacing.`
         );
       }
     } else {
-      shouldReplace = true;
+      shouldReplaceFile = true;
       Logger.log(
         `No existing starter pack file for ${sourceFileName}; adding.`
       );
     }
 
-    if (shouldReplace) {
+    if (shouldReplaceFile) {
       removeFilesWithRegexBypassTrash(JA_STARTER_PACK, dictionaryRegex);
-      matchingSourceFile.makeCopy(JapaneseStarterPack);
+      matchingSourceFile.makeCopy(starterPackFolder);
       Logger.log(`Copied ${sourceFileName} to starter pack`);
-      starterPackFiles = fetchStarterPackFiles();
+      starterPackFilesList = fetchStarterPackFiles();
     }
   }
 
   // Re-fetch and rename with two-digit prefixes
-  starterPackFiles = fetchStarterPackFiles();
+  starterPackFilesList = fetchStarterPackFiles();
 
   for (let i = 0; i < STARTER_DICTIONARIES_ORDER.length; i++) {
     const dictionaryRegex = STARTER_DICTIONARIES_ORDER[i];
-    const prefix = String(i + 1).padStart(2, "0");
+    const indexPrefix = String(i + 1).padStart(2, "0");
 
-    const matchingFile = starterPackFiles.find((file) => {
+    const matchedStarterFile = starterPackFilesList.find((file) => {
       const baseFileName = file.getName().replace(/^\d{2}\s/, "");
       return baseFileName.match(dictionaryRegex);
     });
 
-    if (matchingFile) {
-      const currentName = matchingFile.getName();
-      const baseFileName = currentName.replace(/^\d{2}\s/, "");
-      const newName = `${prefix} ${baseFileName}`;
-      if (currentName !== newName) {
-        matchingFile.setName(newName);
-        Logger.log(`Renamed ${currentName} to ${newName}`);
+    if (matchedStarterFile) {
+      const currentFileName = matchedStarterFile.getName();
+      const baseFileName = currentFileName.replace(/^\d{2}\s/, "");
+      const newFileName = `${indexPrefix} ${baseFileName}`;
+      if (currentFileName !== newFileName) {
+        matchedStarterFile.setName(newFileName);
+        Logger.log(`Renamed ${currentFileName} to ${newFileName}`);
       }
     }
   }

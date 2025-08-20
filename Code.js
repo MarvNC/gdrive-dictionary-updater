@@ -1,11 +1,5 @@
 // @ts-check
 
-/**
- * @typedef {import('./types').GithubRepoDictionary} GithubRepoDictionary
- * @typedef {import('./types').GithubRelease} GithubRelease
- * @typedef {import('./types').GithubAsset} GithubAsset
- */
-
 const getProperty = (propertyName) => {
   const propertyValue =
     PropertiesService.getScriptProperties().getProperty(propertyName);
@@ -32,7 +26,7 @@ function downloadAllRepos() {
   updateStarterDictionariesPack();
 }
 
-/** @type {GithubRepoDictionary[]} */
+/** @type {import('./types').GithubRepoDictionary[]} */
 const REPOS_TO_UPDATE = [
   {
     url: "https://api.github.com/repos/stephenmk/stephenmk.github.io/releases/latest",
@@ -265,7 +259,7 @@ function updateStarterDictionariesPack() {
 }
 
 /**
- * @param {GithubRepoDictionary} githubRepo
+ * @param {import('./types').GithubRepoDictionary} githubRepo
  */
 function downloadLatestVersionOfDictionaryFromGithub(githubRepo) {
   const headers = {
@@ -276,7 +270,7 @@ function downloadLatestVersionOfDictionaryFromGithub(githubRepo) {
     headers: headers,
   };
 
-  /** @type {GithubRelease} */
+  /** @type {import('./types').GithubRelease} */
   let releaseData;
   try {
     const releaseInfo = UrlFetchApp.fetch(
@@ -295,7 +289,7 @@ function downloadLatestVersionOfDictionaryFromGithub(githubRepo) {
 
   // Find the asset containing the includedNameRegex in its name and download it
   const asset = assets.find(
-    /** @type {GithubAsset} */ (asset) =>
+    /** @type {import('./types').GithubAsset} */ (asset) =>
       asset.name.match(githubRepo.includedNameRegex) &&
       asset.name.endsWith(".zip")
   );

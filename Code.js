@@ -306,20 +306,14 @@ function downloadDictionaryLatestVersion(dictionary) {
     downloadFromGitHubAPI(dictionary);
   } else if (dictionary.downloadType === "direct") {
     downloadFromDirectUrl(dictionary);
-  } else {
-    throw new Error(`Unknown download type: ${dictionary.downloadType}`);
   }
 }
 
 /**
  * Downloads a dictionary from GitHub API
- * @param {import('./types').AutoUpdatingDictionary} dictionary
+ * @param {import('./types').GithubApiDictionary} dictionary
  */
 function downloadFromGitHubAPI(dictionary) {
-  if (!dictionary.includedNameRegex) {
-    throw new Error("includedNameRegex is required for GitHub API downloads");
-  }
-
   const headers = {
     Authorization: "token " + GITHUB_ACCESS_TOKEN,
   };
@@ -348,7 +342,7 @@ function downloadFromGitHubAPI(dictionary) {
   // Find the asset containing the includedNameRegex in its name and download it
   const asset = assets.find(
     /** @type {import('./types').GithubAsset} */ (asset) =>
-      asset.name.match(/** @type {RegExp} */ (dictionary.includedNameRegex)) &&
+      asset.name.match(dictionary.includedNameRegex) &&
       asset.name.endsWith(".zip")
   );
 
@@ -391,13 +385,9 @@ function downloadFromGitHubAPI(dictionary) {
 
 /**
  * Downloads a dictionary from a direct URL
- * @param {import('./types').AutoUpdatingDictionary} dictionary
+ * @param {import('./types').DirectDictionary} dictionary
  */
 function downloadFromDirectUrl(dictionary) {
-  if (!dictionary.expectedFileName) {
-    throw new Error("expectedFileName is required for direct downloads");
-  }
-
   try {
     const response = UrlFetchApp.fetch(dictionary.downloadUrl);
 

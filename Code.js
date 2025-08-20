@@ -16,23 +16,37 @@ const JA_STARTER_PACK = getProperty("jaStarterPack");
 const GITHUB_ACCESS_TOKEN = getProperty("githubAccessToken");
 
 function downloadAllRepos() {
+  Logger.log(`Starting download of ${REPOS_TO_UPDATE.length} dictionaries`);
+  let successCount = 0;
+  let errorCount = 0;
+
   for (const repo of REPOS_TO_UPDATE) {
     try {
-      downloadDictionaryLatestVersion(repo);
-    } catch (error) {
       Logger.log(
-        `Error downloading repo ${repo.githubApiUrl}: ${error.message}`
+        `Processing: ${repo.fileNamePrefix.trim()} (${repo.downloadType})`
+      );
+      downloadDictionaryLatestVersion(repo);
+      successCount++;
+    } catch (error) {
+      errorCount++;
+      Logger.log(
+        `Error downloading from ${repo.downloadUrl}: ${error.message}`
       );
     }
   }
+
+  Logger.log(
+    `Download completed: ${successCount} successful, ${errorCount} failed`
+  );
   updateStarterDictionariesPack();
 }
 
 /** @type {import('./types').AutoUpdatingDictionary[]} */
 const REPOS_TO_UPDATE = [
   {
-    githubApiUrl:
+    downloadUrl:
       "https://api.github.com/repos/stephenmk/stephenmk.github.io/releases/latest",
+    downloadType: "github-api",
     folderId: JAPANESE_FOLDER_ID,
     includedNameRegex: /yomi/,
     removeNameRegex: /jitendex/,
@@ -40,8 +54,9 @@ const REPOS_TO_UPDATE = [
     addDate: true,
   },
   {
-    githubApiUrl:
+    downloadUrl:
       "https://api.github.com/repos/yomidevs/jmdict-yomitan/releases/latest",
+    downloadType: "github-api",
     folderId: JAPANESE_FOLDER_ID,
     includedNameRegex: /JMnedict/,
     removeNameRegex: /JMnedict/,
@@ -49,8 +64,9 @@ const REPOS_TO_UPDATE = [
     addDate: true,
   },
   {
-    githubApiUrl:
+    downloadUrl:
       "https://api.github.com/repos/yomidevs/jmdict-yomitan/releases/latest",
+    downloadType: "github-api",
     folderId: JAPANESE_FOLDER_ID,
     includedNameRegex: /KANJIDIC_english/,
     removeNameRegex: /KANJIDIC_english/,
@@ -58,8 +74,9 @@ const REPOS_TO_UPDATE = [
     addDate: true,
   },
   {
-    githubApiUrl:
+    downloadUrl:
       "https://api.github.com/repos/MarvNC/cc-cedict-yomitan/releases/latest",
+    downloadType: "github-api",
     folderId: MANDARIN_FOLDER_ID,
     includedNameRegex: /CC\-CEDICT(?!\.Hanzi)/,
     removeNameRegex: /CC\-CEDICT(?!\.Hanzi)/,
@@ -67,8 +84,9 @@ const REPOS_TO_UPDATE = [
     addDate: true,
   },
   {
-    githubApiUrl:
+    downloadUrl:
       "https://api.github.com/repos/MarvNC/cc-cedict-yomitan/releases/latest",
+    downloadType: "github-api",
     folderId: MANDARIN_FOLDER_ID,
     includedNameRegex: /CC\-CEDICT\.Hanzi/,
     removeNameRegex: /CC\-CEDICT\.Hanzi/,
@@ -76,8 +94,9 @@ const REPOS_TO_UPDATE = [
     addDate: true,
   },
   {
-    githubApiUrl:
+    downloadUrl:
       "https://api.github.com/repos/MarvNC/wordshk-yomitan/releases/latest",
+    downloadType: "github-api",
     folderId: CANTONESE_FOLDER_ID,
     includedNameRegex: /Words\.hk\.[\d-]+.zip$/,
     removeNameRegex: /Words\.hk\.[\d-]+.zip$/,
@@ -85,8 +104,9 @@ const REPOS_TO_UPDATE = [
     addDate: false,
   },
   {
-    githubApiUrl:
+    downloadUrl:
       "https://api.github.com/repos/MarvNC/wordshk-yomitan/releases/latest",
+    downloadType: "github-api",
     folderId: CANTONESE_FOLDER_ID,
     includedNameRegex: /Words\.hk\.Honzi.[\d-]+.zip$/,
     removeNameRegex: /Words\.hk\.Honzi.[\d-]+.zip$/,
@@ -94,13 +114,24 @@ const REPOS_TO_UPDATE = [
     addDate: false,
   },
   {
-    githubApiUrl:
+    downloadUrl:
       "https://api.github.com/repos/MarvNC/pixiv-yomitan/releases/latest",
+    downloadType: "github-api",
     folderId: JAPANESE_FOLDER_ID,
     includedNameRegex: /^PixivLight_[\d\-]+\.zip$/,
     removeNameRegex: /PixivLight_[\d\-]+\.zip$/,
     fileNamePrefix: "[JA-JA Encyclopedia] ",
     addDate: false,
+  },
+  {
+    downloadUrl:
+      "https://api.jiten.moe/api/frequency-list/download?downloadType=yomitan",
+    downloadType: "direct",
+    folderId: JAPANESE_FOLDER_ID,
+    removeNameRegex: /jiten_freq_global/,
+    fileNamePrefix: "[JA Freq] ",
+    addDate: true,
+    expectedFileName: "jiten_freq_global.zip",
   },
 ];
 
@@ -128,6 +159,7 @@ const STARTER_DICTIONARIES_ORDER = [
   /\[Kanji\] JPDB Kanji.*/,
   // Freq
   /\[JA Freq\] JPDB_v2.*_Frequency_Kana.*/,
+  /\[JA Freq\] jiten_freq_global.*/,
   /\[JA Freq\] Freq_CC100.*/,
   /\[JA Freq\] BCCWJ.*/,
   // Pitch
@@ -160,9 +192,6 @@ function updateStarterDictionariesPack() {
     while (it.hasNext()) arr.push(it.next());
     return arr;
   };
-
-  // Escape a string for use in RegExp
-  const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
   let starterPackFiles = fetchStarterPackFiles();
 
@@ -259,9 +288,38 @@ function updateStarterDictionariesPack() {
 }
 
 /**
- * @param {import('./types').AutoUpdatingDictionary} githubRepo
+ * Downloads a dictionary from either GitHub API or direct URL
+ * @param {import('./types').AutoUpdatingDictionary} dictionary
  */
-function downloadDictionaryLatestVersion(githubRepo) {
+function downloadDictionaryLatestVersion(dictionary) {
+  // Validate required fields
+  if (
+    !dictionary.downloadUrl ||
+    !dictionary.folderId ||
+    !dictionary.removeNameRegex ||
+    !dictionary.fileNamePrefix
+  ) {
+    throw new Error("Missing required dictionary configuration");
+  }
+
+  if (dictionary.downloadType === "github-api") {
+    downloadFromGitHubAPI(dictionary);
+  } else if (dictionary.downloadType === "direct") {
+    downloadFromDirectUrl(dictionary);
+  } else {
+    throw new Error(`Unknown download type: ${dictionary.downloadType}`);
+  }
+}
+
+/**
+ * Downloads a dictionary from GitHub API
+ * @param {import('./types').AutoUpdatingDictionary} dictionary
+ */
+function downloadFromGitHubAPI(dictionary) {
+  if (!dictionary.includedNameRegex) {
+    throw new Error("includedNameRegex is required for GitHub API downloads");
+  }
+
   const headers = {
     Authorization: "token " + GITHUB_ACCESS_TOKEN,
   };
@@ -274,13 +332,13 @@ function downloadDictionaryLatestVersion(githubRepo) {
   let releaseData;
   try {
     const releaseInfo = UrlFetchApp.fetch(
-      githubRepo.githubApiUrl,
+      dictionary.downloadUrl,
       options
     ).getContentText();
     releaseData = JSON.parse(releaseInfo);
   } catch (error) {
     Logger.log(
-      `Error fetching release data for ${githubRepo.githubApiUrl}: ${error.message}`
+      `Error fetching release data for ${dictionary.downloadUrl}: ${error.message}`
     );
     return;
   }
@@ -290,43 +348,122 @@ function downloadDictionaryLatestVersion(githubRepo) {
   // Find the asset containing the includedNameRegex in its name and download it
   const asset = assets.find(
     /** @type {import('./types').GithubAsset} */ (asset) =>
-      asset.name.match(githubRepo.includedNameRegex) &&
+      asset.name.match(/** @type {RegExp} */ (dictionary.includedNameRegex)) &&
       asset.name.endsWith(".zip")
   );
 
-  // If asset is found, download it and save it to Google Drive
-  if (asset?.browser_download_url && asset.browser_download_url !== "") {
+  if (!asset?.browser_download_url) {
+    Logger.log(
+      `No asset containing ${dictionary.includedNameRegex} found in the latest release.`
+    );
+    return;
+  }
+
+  try {
     const response = UrlFetchApp.fetch(asset.browser_download_url);
     const fileBlob = response.getBlob();
 
     // Remove existing files for this dictionary
     removeFilesWithRegexBypassTrash(
-      githubRepo.folderId,
-      githubRepo.removeNameRegex
+      dictionary.folderId,
+      dictionary.removeNameRegex
     );
 
-    const folder = DriveApp.getFolderById(githubRepo.folderId);
+    const folder = DriveApp.getFolderById(dictionary.folderId);
     const createdFile = folder.createFile(fileBlob);
-    // Prepend file with to follow naming convention
-    let fileName = createdFile.getName();
-    // add prefix
-    fileName = githubRepo.fileNamePrefix + fileName;
 
-    // Add date to file name if specified
-    if (githubRepo.addDate) {
-      const date = asset.created_at.split("T")[0];
-      // Suffix before file extension
-      fileName = fileName.replace(/(\.[\w\d_-]+)$/i, ` (${date})$1`);
-    }
+    // Process filename
+    let fileName = processFileName(
+      createdFile.getName(),
+      dictionary.fileNamePrefix,
+      dictionary.addDate || false,
+      dictionary.addDate ? asset.created_at : undefined
+    );
 
     createdFile.setName(fileName);
-
     Logger.log(`Downloaded ${createdFile.getName()} to Google Drive.`);
-  } else {
+  } catch (error) {
     Logger.log(
-      `No asset containing ${githubRepo.includedNameRegex} found in the latest release.`
+      `Error downloading file from ${asset.browser_download_url}: ${error.message}`
     );
   }
+}
+
+/**
+ * Downloads a dictionary from a direct URL
+ * @param {import('./types').AutoUpdatingDictionary} dictionary
+ */
+function downloadFromDirectUrl(dictionary) {
+  if (!dictionary.expectedFileName) {
+    throw new Error("expectedFileName is required for direct downloads");
+  }
+
+  try {
+    const response = UrlFetchApp.fetch(dictionary.downloadUrl);
+
+    if (response.getResponseCode() !== 200) {
+      throw new Error(
+        `HTTP ${response.getResponseCode()}: ${response.getContentText()}`
+      );
+    }
+
+    const fileBlob = response.getBlob();
+
+    // Remove existing files for this dictionary
+    removeFilesWithRegexBypassTrash(
+      dictionary.folderId,
+      dictionary.removeNameRegex
+    );
+
+    const folder = DriveApp.getFolderById(dictionary.folderId);
+    const createdFile = folder.createFile(fileBlob);
+
+    // Process filename
+    let fileName = processFileName(
+      dictionary.expectedFileName,
+      dictionary.fileNamePrefix,
+      dictionary.addDate || false,
+      dictionary.addDate ? new Date().toISOString() : undefined
+    );
+
+    createdFile.setName(fileName);
+    Logger.log(`Downloaded ${createdFile.getName()} to Google Drive.`);
+  } catch (error) {
+    Logger.log(
+      `Error downloading file from ${dictionary.downloadUrl}: ${error.message}`
+    );
+  }
+}
+
+/**
+ * Processes a filename by adding prefix and optional date
+ * @param {string} originalName - The original filename
+ * @param {string} prefix - The prefix to add
+ * @param {boolean} addDate - Whether to add a date suffix
+ * @param {string} [dateString] - ISO date string to parse, uses current date if not provided
+ * @returns {string} The processed filename
+ */
+function processFileName(originalName, prefix, addDate, dateString) {
+  if (!originalName || !prefix) {
+    throw new Error("originalName and prefix are required");
+  }
+
+  let fileName = prefix + originalName;
+
+  if (addDate) {
+    try {
+      const date = dateString
+        ? dateString.split("T")[0]
+        : new Date().toISOString().split("T")[0];
+      // Suffix before file extension
+      fileName = fileName.replace(/(\.[\w\d_-]+)$/i, ` (${date})$1`);
+    } catch (error) {
+      Logger.log(`Error processing date for filename: ${error.message}`);
+      // Continue without date if there's an error
+    }
+  }
+
+  return fileName;
 }
 
 /**

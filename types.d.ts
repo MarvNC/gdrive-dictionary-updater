@@ -1,11 +1,21 @@
 // Type definitions for editor/TS checking only. Not used at runtime by Apps Script.
 export interface AutoUpdatingDictionary {
-  githubApiUrl: string;
+  /** URL for GitHub API release endpoint or direct download URL */
+  downloadUrl: string;
+  /** Type of download: 'github-api' for GitHub releases, 'direct' for direct file downloads */
+  downloadType: "github-api" | "direct";
+  /** Google Drive folder ID where the file should be saved */
   folderId: string;
-  includedNameRegex: RegExp;
+  /** Regex to match assets in GitHub releases (only used for github-api type) */
+  includedNameRegex?: RegExp;
+  /** Regex to match files to remove before downloading new version */
   removeNameRegex: RegExp;
+  /** Prefix to add to the downloaded file name */
   fileNamePrefix: string;
+  /** Whether to add date suffix to filename (for github-api, uses asset creation date; for direct, uses current date) */
   addDate?: boolean;
+  /** Expected filename for direct downloads (only used for direct type) */
+  expectedFileName?: string;
 }
 
 export interface GithubAssetUploader {

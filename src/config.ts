@@ -1,3 +1,5 @@
+/// <reference path="./globals.ts" />
+
 const REPOS_TO_UPDATE: AutoUpdatingDictionary[] = [
   {
     downloadUrl:

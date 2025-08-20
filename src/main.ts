@@ -1,4 +1,3 @@
-/// <reference path="./globals.ts" />
 /// <reference path="./config.ts" />
 
 function downloadDictionaryLatestVersion(

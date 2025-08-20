@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2019",
+    "module": "none",
+    "outFile": "Code.js",
+    "removeComments": true,
+    "strict": true,
+    "lib": ["ES2019"],
+    "types": ["google-apps-script"],
+    "skipLibCheck": true,
+    "noEmitOnError": true
+  },
+  "files": [
+    "src/types.d.ts",
+    "src/globals.ts",
+    "src/config.ts",
+    "src/drive-utils.ts",
+    "src/filenames.ts",
+    "src/github.ts",
+    "src/direct.ts",
+    "src/starter-pack.ts",
+    "src/main.ts"
+  ]
+}

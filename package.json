@@ -1,18 +1,20 @@
 {
   "name": "gdrive-dictionary-updater",
   "version": "1.0.0",
-  "main": "src/gdrive-updater.js",
+  "scripts": {
+    "build": "bunx tsc",
+    "push": "bun run build && clasp push",
+    "deploy": "clasp deploy",
+    "start": "clasp run downloadAllRepos",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "@types/google-apps-script": "^1.0.99",
+    "prettier": "^2.8.8"
+  },
   "dependencies": {
     "@google/clasp": "^3.0.6-alpha",
     "googleapis": "^39.2.0"
-  },
-  "scripts": {
-    "start": "clasp run downloadAllRepos",
-    "deploy": "clasp deploy",
-    "push": "clasp push",
-    "pull": "clasp pull"
-  },
-  "devDependencies": {
-    "@types/google-apps-script": "^1.0.99"
   }
 }

@@ -1,7 +1,6 @@
 // Type definitions for editor/TS checking only. Not used at runtime by Apps Script.
 
-
-export interface GithubApiDictionary {
+interface GithubApiDictionary {
   downloadType: "github-api";
   downloadUrl: string;
   folderId: string;
@@ -11,7 +10,7 @@ export interface GithubApiDictionary {
   addDate?: boolean;
 }
 
-export interface DirectDictionary {
+interface DirectDictionary {
   downloadType: "direct";
   downloadUrl: string;
   folderId: string;
@@ -21,9 +20,9 @@ export interface DirectDictionary {
   expectedFileName: string;
 }
 
-export type AutoUpdatingDictionary = GithubApiDictionary | DirectDictionary;
+type AutoUpdatingDictionary = GithubApiDictionary | DirectDictionary;
 
-export interface GithubAssetUploader {
+interface GithubAssetUploader {
   login: string;
   id: number;
   node_id: string;
@@ -44,7 +43,7 @@ export interface GithubAssetUploader {
   site_admin: boolean;
 }
 
-export interface GithubAsset {
+interface GithubAsset {
   url: string;
   id: number;
   node_id: string;
@@ -60,7 +59,7 @@ export interface GithubAsset {
   browser_download_url: string;
 }
 
-export interface GithubRelease {
+interface GithubRelease {
   url: string;
   assets_url: string;
   upload_url: string;

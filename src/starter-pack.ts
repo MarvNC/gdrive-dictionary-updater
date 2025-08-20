@@ -1,3 +1,11 @@
+/**
+ * Update the JA starter pack from the Japanese folder.
+ * For each regex in STARTER_DICTIONARIES_ORDER:
+ * - find the source file
+ * - if >1 matches in starter pack or size differs, delete matches and copy
+ * - if no match, copy the source file
+ * Re-fetch files after changes and then add two-digit prefixes in STARTER_DICTIONARIES_ORDER.
+ */
 function updateStarterDictionariesPack(): void {
   const japaneseSourceFolder = DriveApp.getFolderById(JAPANESE_FOLDER_ID);
   const starterPackFolder = DriveApp.getFolderById(JA_STARTER_PACK);

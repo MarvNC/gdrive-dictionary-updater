@@ -1,3 +1,11 @@
+// @ts-check
+
+/**
+ * @typedef {import('./types').GithubRepoDictionary} GithubRepoDictionary
+ * @typedef {import('./types').GithubRelease} GithubRelease
+ * @typedef {import('./types').GithubAsset} GithubAsset
+ */
+
 const getProperty = (propertyName) => {
   const propertyValue =
     PropertiesService.getScriptProperties().getProperty(propertyName);
@@ -16,7 +24,7 @@ const GITHUB_ACCESS_TOKEN = getProperty("githubAccessToken");
 function downloadAllRepos() {
   for (const repo of REPOS_TO_UPDATE) {
     try {
-      downloadFromGithub(repo);
+      downloadLatestVersionOfDictionaryFromGithub(repo);
     } catch (error) {
       Logger.log(`Error downloading repo ${repo.url}: ${error.message}`);
     }
@@ -24,18 +32,7 @@ function downloadAllRepos() {
   updateStarterDictionariesPack();
 }
 
-/**
- * @typedef {Object} GithubRepoDictionary
- * @property {string} url
- * @property {string} folderId
- * @property {RegExp} includedNameRegex
- * @property {RegExp} removeNameRegex
- * @property {string} fileNamePrefix
- * @property {boolean} [addDate]
- */
-/**
- * @type {GithubRepoDictionary[]}
- */
+/** @type {GithubRepoDictionary[]} */
 const REPOS_TO_UPDATE = [
   {
     url: "https://api.github.com/repos/stephenmk/stephenmk.github.io/releases/latest",
@@ -144,88 +141,104 @@ const UPDATING_DICTIONARIES_TO_COPY_JA_TO_STARTER_PACK = [
 ];
 
 /**
- * Update Starter Dictionaries Pack
- * - This runs after the main downloadFromGithub script runs
- * - We first copy over all the dictionaries in `STARTER_DICTIONARIES_ORDER`
- * that aren't already in the starter pack folder and don't match the regex.
- * - Then we go over the updating dictionaries list and delete and re-add the latest version
- * - Then we go again through `STARTER_DICTIONARIES_ORDER` and prepend the files with
- * a two-digit index
+ * Update the JA starter pack from the Japanese folder.
+ * For each regex in `STARTER_DICTIONARIES_ORDER`:
+ * - find the source file
+ * - if >1 matches in starter pack or size differs, delete matches and copy
+ * - if no match, copy the source file
+ * Re-fetch files after changes and then add two-digit prefixes in `STARTER_DICTIONARIES_ORDER`.
  */
 function updateStarterDictionariesPack() {
   const JapaneseFolder = DriveApp.getFolderById(JAPANESE_FOLDER_ID);
   const JapaneseStarterPack = DriveApp.getFolderById(JA_STARTER_PACK);
 
   // Get all files in both folders as arrays for easier manipulation
-  const japaneseFiles = [];
-  const japaneseFilesIterator = JapaneseFolder.getFiles();
-  while (japaneseFilesIterator.hasNext()) {
-    japaneseFiles.push(japaneseFilesIterator.next());
+  const sourceFiles = [];
+  const sourceFilesIterator = JapaneseFolder.getFiles();
+  while (sourceFilesIterator.hasNext()) {
+    sourceFiles.push(sourceFilesIterator.next());
   }
 
-  const starterPackFiles = [];
-  const starterPackFilesIterator = JapaneseStarterPack.getFiles();
-  while (starterPackFilesIterator.hasNext()) {
-    starterPackFiles.push(starterPackFilesIterator.next());
-  }
+  // helper to fetch current starter pack files from Drive
+  const fetchStarterPackFiles = () => {
+    const arr = [];
+    const it = JapaneseStarterPack.getFiles();
+    while (it.hasNext()) arr.push(it.next());
+    return arr;
+  };
 
-  // Step 1: Copy dictionaries from STARTER_DICTIONARIES_ORDER that aren't already in starter pack
+  // Escape a string for use in RegExp
+  const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  let starterPackFiles = fetchStarterPackFiles();
+
+  // Copy dictionaries from STARTER_DICTIONARIES_ORDER that aren't already in starter pack
   for (const dictionaryRegex of STARTER_DICTIONARIES_ORDER) {
     // Find matching file in Japanese folder
-    const matchingJapaneseFile = japaneseFiles.find((file) =>
+    const matchingSourceFile = sourceFiles.find((file) =>
       file.getName().match(dictionaryRegex)
     );
 
-    if (matchingJapaneseFile) {
-      // Check if it's already in starter pack (ignoring numbered prefixes)
-      const fileName = matchingJapaneseFile.getName();
-      const isAlreadyInStarterPack = starterPackFiles.some((starterFile) => {
-        const starterFileName = starterFile.getName();
-        // Remove numbered prefix (e.g., "01 " or "02 ") to compare base names
-        const baseStarterName = starterFileName.replace(/^\d{2}\s/, "");
-        return baseStarterName === fileName;
-      });
+    if (!matchingSourceFile) continue;
 
-      if (!isAlreadyInStarterPack) {
-        // Copy file to starter pack
-        const copiedFile = matchingJapaneseFile.makeCopy(JapaneseStarterPack);
-        starterPackFiles.push(copiedFile);
-        Logger.log(`Copied ${fileName} to starter pack`);
+    const sourceFileName = matchingSourceFile.getName();
+
+    // Find all starter files whose base name matches the dictionary regex
+    const matchingStarterFiles = starterPackFiles.filter((starterFile) => {
+      const baseStarterName = starterFile.getName().replace(/^\d{2}\s/, "");
+      return baseStarterName.match(dictionaryRegex);
+    });
+
+    // If more than one matching starter file exists, or exactly one but size differs,
+    // delete by dictionaryRegex and copy the source file over.
+    let shouldReplace = false;
+
+    if (matchingStarterFiles.length > 1) {
+      shouldReplace = true;
+      Logger.log(
+        `Multiple (${matchingStarterFiles.length}) starter pack files match ${dictionaryRegex}; replacing with latest ${sourceFileName}`
+      );
+    } else if (matchingStarterFiles.length === 1) {
+      try {
+        const starterSize = matchingStarterFiles[0].getSize();
+        const sourceSize = matchingSourceFile.getSize();
+        if (starterSize !== sourceSize) {
+          shouldReplace = true;
+          Logger.log(
+            `Starter pack file ${matchingStarterFiles[0].getName()} differs in size (${starterSize} != ${sourceSize}); replacing.`
+          );
+        }
+      } catch (e) {
+        // If we can't read size, replace to be safe
+        shouldReplace = true;
+        Logger.log(
+          `Error reading file size for ${matchingStarterFiles[0].getName()}: ${
+            e.message
+          }; replacing.`
+        );
       }
+    } else {
+      // no match -> copy
+      shouldReplace = true;
+      Logger.log(
+        `No existing starter pack file for ${sourceFileName}; adding.`
+      );
+    }
+
+    if (shouldReplace) {
+      // remove existing matches by dictionary regex (permanent delete)
+      removeFilesWithRegexBypassTrash(JA_STARTER_PACK, dictionaryRegex);
+      // copy the latest
+      matchingSourceFile.makeCopy(JapaneseStarterPack);
+      Logger.log(`Copied ${sourceFileName} to starter pack`);
+      // re-fetch starter pack files
+      starterPackFiles = fetchStarterPackFiles();
     }
   }
 
-  // Step 2: Handle updating dictionaries - remove old versions and copy new ones
-  for (const updatingDictionaryRegex of UPDATING_DICTIONARIES_TO_COPY_JA_TO_STARTER_PACK) {
-    // Remove existing versions from starter pack
-    removeFilesWithRegexBypassTrash(JA_STARTER_PACK, updatingDictionaryRegex);
+  // Rename all files with two-digit prefixes based on STARTER_DICTIONARIES_ORDER
+  starterPackFiles = fetchStarterPackFiles();
 
-    // Remove matching files from our array too
-    const filesToRemove = starterPackFiles.filter((file) => {
-      const baseFileName = file.getName().replace(/^\d{2}\s/, "");
-      return baseFileName.match(updatingDictionaryRegex);
-    });
-
-    filesToRemove.forEach((fileToRemove) => {
-      const index = starterPackFiles.indexOf(fileToRemove);
-      if (index > -1) {
-        starterPackFiles.splice(index, 1);
-      }
-    });
-
-    // Find and copy the latest version from Japanese folder
-    const latestFile = japaneseFiles.find((file) =>
-      file.getName().match(updatingDictionaryRegex)
-    );
-
-    if (latestFile) {
-      const copiedFile = latestFile.makeCopy(JapaneseStarterPack);
-      starterPackFiles.push(copiedFile);
-      Logger.log(`Added latest version: ${latestFile.getName()}`);
-    }
-  }
-
-  // Step 3: Rename all files with two-digit prefixes based on STARTER_DICTIONARIES_ORDER
   for (let i = 0; i < STARTER_DICTIONARIES_ORDER.length; i++) {
     const dictionaryRegex = STARTER_DICTIONARIES_ORDER[i];
     const prefix = String(i + 1).padStart(2, "0");
@@ -251,11 +264,10 @@ function updateStarterDictionariesPack() {
   Logger.log("Starter dictionaries pack update completed");
 }
 
-// Function to download a release repo dictionary from GitHub and save it to Google Drive
 /**
  * @param {GithubRepoDictionary} githubRepo
  */
-function downloadFromGithub(githubRepo) {
+function downloadLatestVersionOfDictionaryFromGithub(githubRepo) {
   const headers = {
     Authorization: "token " + GITHUB_ACCESS_TOKEN,
   };
@@ -283,7 +295,7 @@ function downloadFromGithub(githubRepo) {
 
   // Find the asset containing the includedNameRegex in its name and download it
   const asset = assets.find(
-    (/**@type {GithubAsset} */ asset) =>
+    /** @type {GithubAsset} */ (asset) =>
       asset.name.match(githubRepo.includedNameRegex) &&
       asset.name.endsWith(".zip")
   );
@@ -332,7 +344,9 @@ function downloadFromGithub(githubRepo) {
 function removeFilesWithRegexBypassTrash(folderId, regexToRemove) {
   const folder = DriveApp.getFolderById(folderId);
   const files = folder.getFiles();
-  Logger.log(`Removing files matching ${regexToRemove} from folder ${folderId}`);
+  Logger.log(
+    `Removing files matching ${regexToRemove} from folder ${folderId}`
+  );
 
   while (files.hasNext()) {
     const file = files.next();
@@ -359,78 +373,3 @@ function removeFilesWithRegexBypassTrash(folderId, regexToRemove) {
     }
   }
 }
-
-/**
- * @typedef {Object} GithubRelease
- * @property {string} url
- * @property {string} assets_url
- * @property {string} upload_url
- * @property {string} html_url
- * @property {number} id
- * @property {Object} author
- * @property {string} author.login
- * @property {number} author.id
- * @property {string} author.node_id
- * @property {string} author.avatar_url
- * @property {string} author.gravatar_id
- * @property {string} author.url
- * @property {string} author.html_url
- * @property {string} author.followers_url
- * @property {string} author.following_url
- * @property {string} author.gists_url
- * @property {string} author.starred_url
- * @property {string} author.subscriptions_url
- * @property {string} author.organizations_url
- * @property {string} author.repos_url
- * @property {string} author.events_url
- * @property {string} author.received_events_url
- * @property {string} author.type
- * @property {boolean} author.site_admin
- * @property {string} node_id
- * @property {string} tag_name
- * @property {string} target_commitish
- * @property {string} name
- * @property {boolean} draft
- * @property {boolean} prerelease
- * @property {string} created_at
- * @property {string} published_at
- * @property {Array<GithubAsset>} assets
- * @property {string} tarball_url
- * @property {string} zipball_url
- * @property {string} body
- */
-
-/**
- * @typedef {Object} GithubAsset
- * @property {string} url
- * @property {number} id
- * @property {string} node_id
- * @property {string} name
- * @property {string|null} label
- * @property {Object} uploader
- * @property {string} uploader.login
- * @property {number} uploader.id
- * @property {string} uploader.node_id
- * @property {string} uploader.avatar_url
- * @property {string} uploader.gravatar_id
- * @property {string} uploader.url
- * @property {string} uploader.html_url
- * @property {string} uploader.followers_url
- * @property {string} uploader.following_url
- * @property {string} uploader.gists_url
- * @property {string} uploader.starred_url
- * @property {string} uploader.subscriptions_url
- * @property {string} uploader.organizations_url
- * @property {string} uploader.repos_url
- * @property {string} uploader.events_url
- * @property {string} uploader.received_events_url
- * @property {string} uploader.type
- * @property {boolean} uploader.site_admin
- * @property {string} content_type
- * @property {string} state
- * @property {number} size
- * @property {number} download_count
- * @property {string} created_at
- * @property {string} updated_at
- * @property {string} browser_download_url
- */

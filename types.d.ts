@@ -1,6 +1,6 @@
 // Type definitions for editor/TS checking only. Not used at runtime by Apps Script.
-export interface GithubRepoDictionary {
-  url: string;
+export interface AutoUpdatingDictionary {
+  githubApiUrl: string;
   folderId: string;
   includedNameRegex: RegExp;
   removeNameRegex: RegExp;

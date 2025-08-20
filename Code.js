@@ -18,18 +18,21 @@ const GITHUB_ACCESS_TOKEN = getProperty("githubAccessToken");
 function downloadAllRepos() {
   for (const repo of REPOS_TO_UPDATE) {
     try {
-      downloadLatestVersionOfDictionaryFromGithub(repo);
+      downloadDictionaryLatestVersion(repo);
     } catch (error) {
-      Logger.log(`Error downloading repo ${repo.url}: ${error.message}`);
+      Logger.log(
+        `Error downloading repo ${repo.githubApiUrl}: ${error.message}`
+      );
     }
   }
   updateStarterDictionariesPack();
 }
 
-/** @type {import('./types').GithubRepoDictionary[]} */
+/** @type {import('./types').AutoUpdatingDictionary[]} */
 const REPOS_TO_UPDATE = [
   {
-    url: "https://api.github.com/repos/stephenmk/stephenmk.github.io/releases/latest",
+    githubApiUrl:
+      "https://api.github.com/repos/stephenmk/stephenmk.github.io/releases/latest",
     folderId: JAPANESE_FOLDER_ID,
     includedNameRegex: /yomi/,
     removeNameRegex: /jitendex/,
@@ -37,7 +40,8 @@ const REPOS_TO_UPDATE = [
     addDate: true,
   },
   {
-    url: "https://api.github.com/repos/yomidevs/jmdict-yomitan/releases/latest",
+    githubApiUrl:
+      "https://api.github.com/repos/yomidevs/jmdict-yomitan/releases/latest",
     folderId: JAPANESE_FOLDER_ID,
     includedNameRegex: /JMnedict/,
     removeNameRegex: /JMnedict/,
@@ -45,7 +49,8 @@ const REPOS_TO_UPDATE = [
     addDate: true,
   },
   {
-    url: "https://api.github.com/repos/yomidevs/jmdict-yomitan/releases/latest",
+    githubApiUrl:
+      "https://api.github.com/repos/yomidevs/jmdict-yomitan/releases/latest",
     folderId: JAPANESE_FOLDER_ID,
     includedNameRegex: /KANJIDIC_english/,
     removeNameRegex: /KANJIDIC_english/,
@@ -53,7 +58,8 @@ const REPOS_TO_UPDATE = [
     addDate: true,
   },
   {
-    url: "https://api.github.com/repos/MarvNC/cc-cedict-yomitan/releases/latest",
+    githubApiUrl:
+      "https://api.github.com/repos/MarvNC/cc-cedict-yomitan/releases/latest",
     folderId: MANDARIN_FOLDER_ID,
     includedNameRegex: /CC\-CEDICT(?!\.Hanzi)/,
     removeNameRegex: /CC\-CEDICT(?!\.Hanzi)/,
@@ -61,7 +67,8 @@ const REPOS_TO_UPDATE = [
     addDate: true,
   },
   {
-    url: "https://api.github.com/repos/MarvNC/cc-cedict-yomitan/releases/latest",
+    githubApiUrl:
+      "https://api.github.com/repos/MarvNC/cc-cedict-yomitan/releases/latest",
     folderId: MANDARIN_FOLDER_ID,
     includedNameRegex: /CC\-CEDICT\.Hanzi/,
     removeNameRegex: /CC\-CEDICT\.Hanzi/,
@@ -69,7 +76,8 @@ const REPOS_TO_UPDATE = [
     addDate: true,
   },
   {
-    url: "https://api.github.com/repos/MarvNC/wordshk-yomitan/releases/latest",
+    githubApiUrl:
+      "https://api.github.com/repos/MarvNC/wordshk-yomitan/releases/latest",
     folderId: CANTONESE_FOLDER_ID,
     includedNameRegex: /Words\.hk\.[\d-]+.zip$/,
     removeNameRegex: /Words\.hk\.[\d-]+.zip$/,
@@ -77,7 +85,8 @@ const REPOS_TO_UPDATE = [
     addDate: false,
   },
   {
-    url: "https://api.github.com/repos/MarvNC/wordshk-yomitan/releases/latest",
+    githubApiUrl:
+      "https://api.github.com/repos/MarvNC/wordshk-yomitan/releases/latest",
     folderId: CANTONESE_FOLDER_ID,
     includedNameRegex: /Words\.hk\.Honzi.[\d-]+.zip$/,
     removeNameRegex: /Words\.hk\.Honzi.[\d-]+.zip$/,
@@ -85,7 +94,8 @@ const REPOS_TO_UPDATE = [
     addDate: false,
   },
   {
-    url: "https://api.github.com/repos/MarvNC/pixiv-yomitan/releases/latest",
+    githubApiUrl:
+      "https://api.github.com/repos/MarvNC/pixiv-yomitan/releases/latest",
     folderId: JAPANESE_FOLDER_ID,
     includedNameRegex: /^PixivLight_[\d\-]+\.zip$/,
     removeNameRegex: /PixivLight_[\d\-]+\.zip$/,
@@ -122,16 +132,6 @@ const STARTER_DICTIONARIES_ORDER = [
   /\[JA Freq\] BCCWJ.*/,
   // Pitch
   /\[Pitch\] NHK2016.*/,
-];
-
-/**
- * @type {RegExp[]}
- */
-const UPDATING_DICTIONARIES_TO_COPY_JA_TO_STARTER_PACK = [
-  /\[JA-JA Names\] JMnedict.*/,
-  /\[JA-EN\] jitendex-yomitan.*/,
-  /\[JA-JA Encyclopedia\] PixivLight.*/,
-  /\[Kanji\] KANJIDIC_english.*/,
 ];
 
 /**
@@ -259,9 +259,9 @@ function updateStarterDictionariesPack() {
 }
 
 /**
- * @param {import('./types').GithubRepoDictionary} githubRepo
+ * @param {import('./types').AutoUpdatingDictionary} githubRepo
  */
-function downloadLatestVersionOfDictionaryFromGithub(githubRepo) {
+function downloadDictionaryLatestVersion(githubRepo) {
   const headers = {
     Authorization: "token " + GITHUB_ACCESS_TOKEN,
   };
@@ -274,13 +274,13 @@ function downloadLatestVersionOfDictionaryFromGithub(githubRepo) {
   let releaseData;
   try {
     const releaseInfo = UrlFetchApp.fetch(
-      githubRepo.url,
+      githubRepo.githubApiUrl,
       options
     ).getContentText();
     releaseData = JSON.parse(releaseInfo);
   } catch (error) {
     Logger.log(
-      `Error fetching release data for ${githubRepo.url}: ${error.message}`
+      `Error fetching release data for ${githubRepo.githubApiUrl}: ${error.message}`
     );
     return;
   }

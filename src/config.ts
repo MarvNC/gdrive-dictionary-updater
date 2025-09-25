@@ -119,4 +119,5 @@ const STARTER_DICTIONARIES_ORDER: RegExp[] = [
   /\[JA Freq\] BCCWJ.*/,
   // Pitch
   /\[Pitch\] NHK2016.*/,
+  /\[Pitch\] 大辞泉.*/,
 ];

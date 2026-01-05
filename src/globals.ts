@@ -10,3 +10,6 @@ const MANDARIN_FOLDER_ID = getProperty("mandarinFolderId");
 const CANTONESE_FOLDER_ID = getProperty("cantoneseFolderId");
 const JA_STARTER_PACK = getProperty("jaStarterPack");
 const GITHUB_ACCESS_TOKEN = getProperty("githubAccessToken");
+
+// File size limit for choosing between standard and resumable upload
+const SIZE_LIMIT_BYTES = 49 * 1024 * 1024; // 50 MB

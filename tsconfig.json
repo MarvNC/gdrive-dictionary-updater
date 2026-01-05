@@ -13,6 +13,7 @@
   "files": [
     "src/types.d.ts",
     "src/globals.ts",
+    "src/UploadApp.ts",
     "src/config.ts",
     "src/drive-utils.ts",
     "src/filenames.ts",

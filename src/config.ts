@@ -1,6 +1,7 @@
 /// <reference path="./globals.ts" />
 
 const REPOS_TO_UPDATE: AutoUpdatingDictionary[] = [
+  // Japanese dictionaries
   {
     downloadUrl:
       "https://api.github.com/repos/stephenmk/stephenmk.github.io/releases/latest",
@@ -33,6 +34,27 @@ const REPOS_TO_UPDATE: AutoUpdatingDictionary[] = [
   },
   {
     downloadUrl:
+      "https://api.github.com/repos/MarvNC/pixiv-yomitan/releases/latest",
+    downloadType: "github-api",
+    folderId: JAPANESE_FOLDER_ID,
+    includedNameRegex: /^PixivLight_[\d\-]+\.zip$/,
+    removeNameRegex: /PixivLight_[\d\-]+\.zip$/,
+    fileNamePrefix: "[JA-JA Encyclopedia] ",
+    addDate: false,
+  },
+  {
+    downloadUrl:
+      "https://api.jiten.moe/api/frequency-list/download?downloadType=yomitan",
+    downloadType: "direct",
+    folderId: JAPANESE_FOLDER_ID,
+    removeNameRegex: /jiten_freq_global/,
+    fileNamePrefix: "[JA Freq] ",
+    addDate: true,
+    expectedFileName: "jiten_freq_global.zip",
+  },
+  // Mandarin dictionaries
+  {
+    downloadUrl:
       "https://api.github.com/repos/MarvNC/cc-cedict-yomitan/releases/latest",
     downloadType: "github-api",
     folderId: MANDARIN_FOLDER_ID,
@@ -51,6 +73,7 @@ const REPOS_TO_UPDATE: AutoUpdatingDictionary[] = [
     fileNamePrefix: "[Hanzi] ",
     addDate: true,
   },
+  // Cantonese dictionaries
   {
     downloadUrl:
       "https://api.github.com/repos/MarvNC/wordshk-yomitan/releases/latest",
@@ -73,23 +96,23 @@ const REPOS_TO_UPDATE: AutoUpdatingDictionary[] = [
   },
   {
     downloadUrl:
-      "https://api.github.com/repos/MarvNC/pixiv-yomitan/releases/latest",
+      "https://api.github.com/repos/MarvNC/cc-cedict-yomitan/releases/latest",
     downloadType: "github-api",
-    folderId: JAPANESE_FOLDER_ID,
-    includedNameRegex: /^PixivLight_[\d\-]+\.zip$/,
-    removeNameRegex: /PixivLight_[\d\-]+\.zip$/,
-    fileNamePrefix: "[JA-JA Encyclopedia] ",
-    addDate: false,
+    folderId: CANTONESE_FOLDER_ID,
+    includedNameRegex: /CC\-CEDICT\.Canto/,
+    removeNameRegex: /CC\-CEDICT\.Canto/,
+    fileNamePrefix: "[YUE-EN] ",
+    addDate: true,
   },
   {
     downloadUrl:
-      "https://api.jiten.moe/api/frequency-list/download?downloadType=yomitan",
-    downloadType: "direct",
-    folderId: JAPANESE_FOLDER_ID,
-    removeNameRegex: /jiten_freq_global/,
-    fileNamePrefix: "[JA Freq] ",
+      "https://api.github.com/repos/MarvNC/cc-cedict-yomitan/releases/latest",
+    downloadType: "github-api",
+    folderId: CANTONESE_FOLDER_ID,
+    includedNameRegex: /CC\-Canto/,
+    removeNameRegex: /CC\-Canto/,
+    fileNamePrefix: "[YUE-EN] ",
     addDate: true,
-    expectedFileName: "jiten_freq_global.zip",
   },
 ];
 
